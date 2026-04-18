@@ -1,0 +1,24 @@
+{
+  "name": "gem5 Lab",
+  "image": "prag79/gem5-lab:latest",
+
+  "remoteUser": "student",
+  "workspaceFolder": "/home/student/work",
+
+  "forwardPorts": [3456, 3457, 3458],
+  "portsAttributes": {
+    "3456": {
+      "label": "gem5 simulated console",
+      "onAutoForward": "notify",
+      "visibility": "private"
+    }
+  },
+
+  "postAttachCommand": "echo 'gem5 lab ready. Try: lab list   |   lab 01   |   lab 02 (then telnet localhost 3456 in a new terminal)'",
+
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "8gb",
+    "storage": "32gb"
+  }
+}
