@@ -1,6 +1,9 @@
 {
   "name": "gem5 Lab",
-  "image": "prag79/gem5-lab:latest",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
 
   "remoteUser": "student",
   "workspaceFolder": "/home/student/work",
