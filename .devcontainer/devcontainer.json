@@ -3,7 +3,6 @@
   "image": "ghcr.io/prag79/gem5-lab:latest",
 
   "remoteUser": "student",
-  "workspaceFolder": "/home/student/work",
 
   "forwardPorts": [3456, 3457, 3458],
   "portsAttributes": {
