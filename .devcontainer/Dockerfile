@@ -48,8 +48,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Python deps for gem5 stdlib (resource download, plotting).
+# Note: do NOT pip install `m5` — the PyPI `m5` package is an unrelated,
+# abandoned Python 2 project. The gem5 `m5` guest utility is built from
+# gem5's own util/m5/ source for the target ISA, and the host-side `import
+# m5` module is provided by the gem5 binary itself (which embeds Python).
+# So nothing m5-related needs to come from pip.
 RUN pip3 install --no-cache-dir \
-        m5 \
         matplotlib pandas
 
 # Copy gem5 binaries + the configs/ tree from the build stage.
