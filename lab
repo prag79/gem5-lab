@@ -62,6 +62,7 @@ case "$cmd" in
 
   03|03-cpu-comparison)
     prepare_workdir 03-cpu-comparison
+    make
     exec python3 compare.py
     ;;
 
