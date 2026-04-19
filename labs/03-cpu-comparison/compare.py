@@ -23,8 +23,13 @@ CASES = [
     ("o3",     "O3"),
 ]
 
-CYCLES_RE = re.compile(r"system\.processor\.cores\.core\.numCycles\s+(\d+)")
-INSTS_RE  = re.compile(r"system\.processor\.cores\.core\.committedInsts\s+(\d+)")
+# Match any stat line whose path ends in `.numCycles` or `.committedInsts`,
+# regardless of how the SimpleProcessor instance is laid out underneath
+# `system.processor.*`. Different gem5 versions / multi-core configs use
+# `cores.core`, `cores0.core`, `core`, etc. — being permissive here makes
+# the script survive schema churn.
+CYCLES_RE = re.compile(r"^(\S*\.numCycles)\s+(\d+)", re.MULTILINE)
+INSTS_RE  = re.compile(r"^(\S*\.committedInsts)\s+(\d+)", re.MULTILINE)
 
 if not BINARY.is_file():
     raise SystemExit(
@@ -49,16 +54,30 @@ for name, cpu in CASES:
     with open(f"{outdir}/stats.txt") as f:
         stats = f.read()
 
-    cycles_match = CYCLES_RE.search(stats)
-    insts_match  = INSTS_RE.search(stats)
-    if not (cycles_match and insts_match):
+    cycles_matches = CYCLES_RE.findall(stats)
+    insts_matches  = INSTS_RE.findall(stats)
+    if not (cycles_matches and insts_matches):
+        # Surface a few likely candidate stats so the user can fix the
+        # regex without having to grep stats.txt themselves.
+        candidates = [
+            line for line in stats.splitlines()
+            if "Cycles" in line or "Inst" in line
+        ][:20]
         raise RuntimeError(
-            f"Could not find numCycles/committedInsts in {outdir}/stats.txt; "
-            "the gem5 stats schema may have changed for your version."
+            f"Could not find numCycles/committedInsts in {outdir}/stats.txt.\n"
+            "Stat lines that mention Cycles or Inst (first 20):\n  "
+            + "\n  ".join(candidates)
         )
 
-    cycles = int(cycles_match.group(1))
-    insts  = int(insts_match.group(1))
+    # If multiple cores reported, take the first (single-core lab) and
+    # also print the path so the student can see exactly which stat we
+    # used.
+    cycles_path, cycles_str = cycles_matches[0]
+    insts_path,  insts_str  = insts_matches[0]
+    cycles = int(cycles_str)
+    insts  = int(insts_str)
+    print(f"  using {cycles_path} = {cycles}")
+    print(f"  using {insts_path} = {insts}")
     results[name] = {
         "cycles": cycles,
         "insts":  insts,
