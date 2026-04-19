@@ -16,6 +16,7 @@ Python, no gem5 source tree to build.
 - [Lab 01 — Hello, simulated RISC-V (SE mode)](#lab-01--hello-simulated-risc-v-se-mode)
 - [Lab 02 — Boot Linux on a simulated HiFive board (FS mode)](#lab-02--boot-linux-on-a-simulated-hifive-board-fs-mode)
 - [Lab 03 — Same binary, two CPU models, different stats](#lab-03--same-binary-two-cpu-models-different-stats)
+- [Editing labs and re-running](#editing-labs-and-re-running)
 - [Reference: paths, commands, and stopping the codespace](#reference)
 - [Troubleshooting](#troubleshooting)
 - [What's inside the container](#whats-inside-the-container)
@@ -282,6 +283,103 @@ That gap is the whole point of microarchitecture as a discipline.
   model handles it.
 - Sweep cache configurations and plot the results with `matplotlib`
   (already installed in the container).
+
+---
+
+## Editing labs and re-running
+
+The first time you run `lab N`, the dispatcher copies the canonical
+lab content from `/labs/0N-*/` (read-only, baked into the image) to
+`~/work/0N-*/` (your editable, persisted workspace), then runs from
+there. Any subsequent `lab N` invocation uses `cp -ru` (update only
+if source is newer), so **your edits in `~/work/` are never
+overwritten** — only files that don't exist in your workdir get
+copied in fresh.
+
+### Quickest workflow: just re-run `lab N`
+
+After editing any file in `~/work/0N-*/`, simply re-run the same
+dispatcher command. It rebuilds and re-simulates from scratch:
+
+| You edited… | Re-run with | What happens |
+|---|---|---|
+| Lab 01: `hello-se.c` or `run-se.py` | `lab 01` | `make` rebuilds the ELF if needed, gem5 re-runs |
+| Lab 02: `run-fs.py` | `lab 02` | Artifacts already cached, gem5 re-runs immediately |
+| Lab 03: `hello-se.c`, `run-se.py`, or `compare.py` | `lab 03` | `make` rebuilds the ELF, both ATOMIC and O3 re-run |
+
+### Finer control: drive `make` and `gem5-riscv` directly
+
+For tighter iteration loops where you don't want a full rebuild +
+both CPU runs every time, drop into the workdir and invoke the tools
+yourself.
+
+#### Lab 01
+
+```bash
+cd ~/work/01-se-hello
+
+make                                  # only rebuilds hello-se.elf if hello-se.c changed
+gem5-riscv run-se.py hello-se.elf     # one gem5 run, output to ./m5out/
+```
+
+To keep multiple runs side-by-side for comparison:
+
+```bash
+gem5-riscv --outdir m5out-atomic run-se.py hello-se.elf
+# ...edit run-se.py, swap CPUTypes.ATOMIC -> CPUTypes.TIMING...
+gem5-riscv --outdir m5out-timing run-se.py hello-se.elf
+diff m5out-atomic/stats.txt m5out-timing/stats.txt | less
+```
+
+#### Lab 02
+
+```bash
+cd ~/work/02-fs-linux-riscv
+
+make artifacts                        # no-op if kernel + disk already cached
+gem5-riscv run-fs.py                  # boot Linux; from a 2nd terminal:
+                                      #   telnet localhost 3456
+```
+
+Force-refresh the kernel and disk image (rare):
+
+```bash
+make clean && make artifacts
+```
+
+#### Lab 03
+
+```bash
+cd ~/work/03-cpu-comparison
+
+make                                  # rebuilds hello-se.elf if hello-se.c changed
+python3 compare.py                    # runs both ATOMIC and O3, prints JSON
+```
+
+Or run just one CPU model to iterate fast:
+
+```bash
+gem5-riscv --outdir m5out-atomic run-se.py hello-se.elf --cpu-type ATOMIC
+gem5-riscv --outdir m5out-o3     run-se.py hello-se.elf --cpu-type O3
+```
+
+`run-se.py` accepts `--cpu-type` ∈ {`ATOMIC`, `TIMING`, `O3`,
+`MINOR`}.
+
+### Watch out for these
+
+- **`m5out/` is overwritten on every gem5 run.** If you want to keep
+  a particular run's stats, copy it aside first
+  (`cp -r m5out m5out-baseline`) or always pass `--outdir
+  m5out-<label>` to gem5.
+- **`make clean`** in any lab dir deletes the built ELF and any
+  `m5out*/` directories — useful if a stale binary is confusing you.
+- **Reset a lab to canonical state:**
+  `rm -rf ~/work/0N-* && lab 0N`. The next `prepare_workdir` re-copies
+  fresh from `/labs/`.
+- **Edits to Python files** (`run-se.py`, `run-fs.py`, `compare.py`)
+  take effect on the next gem5/python invocation — no build step
+  needed.
 
 ---
 
