@@ -218,13 +218,32 @@ running on a simulated CPU. Try:
 ```sh
 uname -a
 cat /proc/cpuinfo
-m5 exit
 ```
 
-`m5 exit` is gem5's special "we're done" instruction. The simulated
-guest tells the simulator to stop; gem5 cleanly shuts down and writes
-its final `m5out/stats.txt` in Terminal 1. Both terminals return to a
-shell prompt.
+### Stopping the simulation
+
+The cleanest way: in **Terminal 1** (the gem5 process), press
+**`Ctrl+C`**. gem5 catches `SIGINT`, writes its final
+`m5out/stats.txt`, and exits. Then in Terminal 2, press `Ctrl+]` and
+type `quit` to drop the now-disconnected telnet session.
+
+You may have seen tutorials suggest `m5 exit` from inside the guest —
+that's gem5's special "we're done" instruction, which the guest
+triggers via a magic MMIO write that the simulator catches. It's
+elegant when it works, but the BusyBox image we pull from
+`dist.gem5.org` doesn't reliably ship the `m5` userspace utility for
+RISC-V. To check whether yours does:
+
+```sh
+which m5 && m5 --addr 0x10010000 exit
+```
+
+`0x10010000` is the m5ops MMIO base on the gem5 `RiscvBoard`. If `m5`
+isn't installed, you'll see "command not found" — just use
+`Ctrl+C` in Terminal 1.
+
+Failing that, `poweroff -f` from inside the guest halts Linux, after
+which `Ctrl+C` in Terminal 1 cleanly exits gem5.
 
 ### What you just did
 
@@ -435,6 +454,7 @@ gem5-riscv --outdir m5out-o3     run-se.py hello-se.elf --cpu-type O3
 | `make` fails with `Permission denied` writing to `/labs/...` | You're an out-of-date image. Run `gh codespace rebuild --full` or recreate the codespace. |
 | `riscv64-linux-gnu-gcc: stdio.h: No such file` | Same as above — old image. |
 | `gem5-riscv: error while loading shared libraries` | Same as above. |
+| Lab 02: `m5 exit` says `command not found` (or hangs) | The BusyBox image doesn't reliably ship the `m5` utility for RISC-V. Just press `Ctrl+C` in Terminal 1 — gem5 catches `SIGINT` and exits cleanly. |
 | Anything in `~/work/` is in a weird state | `rm -rf ~/work/0N-*` and re-run `lab N` — the canonical content is restored from `/labs/`. |
 | Anything else | Open an issue on this repo with the full output. |
 
