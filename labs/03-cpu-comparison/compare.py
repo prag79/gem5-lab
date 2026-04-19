@@ -23,13 +23,23 @@ CASES = [
     ("o3",     "O3"),
 ]
 
-# Match any stat line whose path ends in `.numCycles` or `.committedInsts`,
-# regardless of how the SimpleProcessor instance is laid out underneath
-# `system.processor.*`. Different gem5 versions / multi-core configs use
-# `cores.core`, `cores0.core`, `core`, etc. — being permissive here makes
+# Match any stat line whose path ends in `.numCycles`. Different gem5
+# versions root the SimpleProcessor under `system.processor.*` or
+# `board.processor.*`, with single- or multi-core variants
+# (`cores.core` vs `cores0.core` etc.) — being permissive here makes
 # the script survive schema churn.
 CYCLES_RE = re.compile(r"^(\S*\.numCycles)\s+(\d+)", re.MULTILINE)
-INSTS_RE  = re.compile(r"^(\S*\.committedInsts)\s+(\d+)", re.MULTILINE)
+
+# Instruction count moved around between gem5 versions:
+#   - v23.0+ stdlib: `<core>.commitStats0.numInsts`
+#   - older gem5:    `<core>.committedInsts`
+#   - global legacy: top-level `simInsts`
+# Try each pattern in order; first hit wins.
+INSTS_REGEXES = [
+    re.compile(r"^(\S*\.commitStats\d*\.numInsts)\s+(\d+)", re.MULTILINE),
+    re.compile(r"^(\S*\.committedInsts)\s+(\d+)",           re.MULTILINE),
+    re.compile(r"^(simInsts)\s+(\d+)",                       re.MULTILINE),
+]
 
 if not BINARY.is_file():
     raise SystemExit(
@@ -55,17 +65,21 @@ for name, cpu in CASES:
         stats = f.read()
 
     cycles_matches = CYCLES_RE.findall(stats)
-    insts_matches  = INSTS_RE.findall(stats)
+    insts_matches  = []
+    for rx in INSTS_REGEXES:
+        insts_matches = rx.findall(stats)
+        if insts_matches:
+            break
     if not (cycles_matches and insts_matches):
         # Surface a few likely candidate stats so the user can fix the
         # regex without having to grep stats.txt themselves.
         candidates = [
             line for line in stats.splitlines()
-            if "Cycles" in line or "Inst" in line
+            if "Cycles" in line or "numInst" in line or "committedInst" in line
         ][:20]
         raise RuntimeError(
-            f"Could not find numCycles/committedInsts in {outdir}/stats.txt.\n"
-            "Stat lines that mention Cycles or Inst (first 20):\n  "
+            f"Could not find a cycles or instructions stat in {outdir}/stats.txt.\n"
+            "Candidate stat lines (first 20):\n  "
             + "\n  ".join(candidates)
         )
 
