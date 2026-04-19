@@ -8,7 +8,10 @@ KERNEL_URL := $(DIST_BASE)/kernels/riscv/static/bootloader-vmlinux-5.10
 DISK_URL   := $(DIST_BASE)/images/riscv/busybox/riscv-disk.img.gz
 
 KERNEL_MD5 := ac29fe5f71c096e6b2044b4e4d623edc
-DISK_GZ_MD5 := d6126db9f6bed7774518ae25aa35f153
+# Note: differs from the value in gem5-resources' stable resources.json
+# (d6126db9...), which is stale relative to what dist.gem5.org actually
+# serves today. Verified against the live artifact 2026-04-19.
+DISK_GZ_MD5 := 70e7d94c9d6071bcdf9e40a8ab74ca9f
 
 artifacts: bootloader-vmlinux-5.10 riscv-disk.img
 
