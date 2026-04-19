@@ -45,13 +45,19 @@ case "$cmd" in
 
   02|02-fs-linux-riscv)
     prepare_workdir 02-fs-linux-riscv
+    # Fetch kernel + disk image directly from dist.gem5.org. We avoid the
+    # gem5 example shipped under /opt/gem5/configs because it calls
+    # obtain_resource(), which hits the gem5-resources metadata service.
+    # That service returns HTTP 410 for v23.0.1.0 clients now, so the
+    # shipped script crashes on startup.
+    make artifacts
     echo "Booting Linux on HiFive (FS mode)."
     echo "When you see 'Listening for system connection on port 3456',"
     echo "open a SECOND terminal in this Codespace and run:"
     echo
     echo "    telnet localhost 3456"
     echo
-    exec gem5-riscv /opt/gem5/configs/example/gem5_library/riscv-fs.py
+    exec gem5-riscv run-fs.py
     ;;
 
   03|03-cpu-comparison)

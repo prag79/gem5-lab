@@ -4,9 +4,12 @@ Full-system simulation: gem5 boots a real RV64 Linux kernel + BusyBox
 disk image on a HiFive Unmatched board model. The simulated UART is
 exposed on TCP port **3456**.
 
-> First run downloads `riscv-bootloader-vmlinux-5.10` and
-> `riscv-disk-img` (~150 MB total) into `~/.cache/gem5/`. Subsequent
-> runs reuse the cache.
+> First run downloads the kernel (`bootloader-vmlinux-5.10`, ~13 MB)
+> and the BusyBox disk image (`riscv-disk.img.gz`, ~11 MB compressed)
+> from `dist.gem5.org` into `~/work/02-fs-linux-riscv/`. Subsequent
+> runs reuse the local copy. We fetch directly via `make artifacts`
+> instead of using `obtain_resource()`, because the gem5-resources
+> metadata service no longer responds to v23.0.1.0 clients (HTTP 410).
 
 ## Run it
 
