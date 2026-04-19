@@ -36,13 +36,20 @@ FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PATH=/opt/gem5/bin:$PATH       \
+    PYTHONPATH=/opt/gem5/python    \
     GEM5_RESOURCE_DIR=/opt/gem5-resources
 
-# Runtime-only dependencies (no compiler, no source).
+# Runtime dependencies for gem5 + the lab cross-compile toolchain.
+#   - python3-dev provides libpython3.10.so.1.0 that the gem5 binary embeds.
+#   - libhdf5-cpp-103 provides libhdf5_serial_cpp.so.103 (gem5 stats backend).
+#   - libc6-dev-riscv64-cross provides <stdio.h> et al + static glibc for
+#     riscv64-linux-gnu-gcc (without it, lab 01's `make` fails to find headers).
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        python3 python3-pip                                       \
-        libprotobuf23 libgoogle-perftools4 libhdf5-103 libpng16-16 \
+        python3 python3-pip python3-dev                           \
+        libprotobuf23 libgoogle-perftools4                        \
+        libhdf5-103 libhdf5-cpp-103 libpng16-16                   \
         gcc-riscv64-linux-gnu binutils-riscv64-linux-gnu          \
+        libc6-dev-riscv64-cross                                   \
         wget curl ca-certificates sudo nano less file unzip xz-utils \
         make telnet git \
     && rm -rf /var/lib/apt/lists/*
@@ -56,12 +63,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN pip3 install --no-cache-dir \
         matplotlib pandas
 
-# Copy gem5 binaries + the configs/ tree from the build stage.
+# Copy gem5 binaries + the configs/ tree + the gem5 stdlib Python package
+# from the build stage. The stdlib lives at src/python/gem5/ inside the gem5
+# tree; exposing src/python on PYTHONPATH lets `from gem5.components... import`
+# work for run-se.py and friends.
 RUN mkdir -p /opt/gem5/bin
 COPY --from=gem5-build /opt/gem5-x86   /opt/gem5/bin/gem5-x86
 COPY --from=gem5-build /opt/gem5-arm   /opt/gem5/bin/gem5-arm
 COPY --from=gem5-build /opt/gem5-riscv /opt/gem5/bin/gem5-riscv
-COPY --from=gem5-build /src/gem5/configs /opt/gem5/configs
+COPY --from=gem5-build /src/gem5/configs    /opt/gem5/configs
+COPY --from=gem5-build /src/gem5/src/python /opt/gem5/python
 
 # Lab content + helpers.
 COPY labs/  /labs/
